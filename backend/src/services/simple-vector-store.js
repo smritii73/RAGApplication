@@ -61,6 +61,12 @@ class SimpleVectorStore {
     return magA && magB ? dotProduct / (magA * magB) : 0;
   }
 
+  async clearCollection() {
+    this.collections[this.collectionName] = [];
+    this.saveStore();
+    console.log("Vector store cleared");
+  }
+
   async searchSimilar(queryVector, videoId = null, limit = 5) {
     let results = this.collections[this.collectionName] || [];
 
@@ -114,5 +120,8 @@ export default {
   },
   searchBothVideos(queryVector, limit) {
     return this.getInstance().searchBothVideos(queryVector, limit);
+  },
+  clearCollection() {
+    return this.getInstance().clearCollection();
   },
 };

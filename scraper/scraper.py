@@ -30,15 +30,16 @@ def get_youtube_transcript_with_ytdlp(url):
     """Get transcript and metadata from YouTube using yt-dlp"""
     try:
         print(f"\n🎬 Processing YouTube: {url}")
-        
+
         video_id = extract_video_id(url)
         if not video_id:
             return {"error": "Could not extract video ID from URL"}
-        
+
         print(f"✅ Extracted video ID: {video_id}")
-        
+
         # Get transcript and metadata using yt-dlp
         print("⏳ Fetching transcript and metadata with yt-dlp...")
+
         ydl_opts = {
             'quiet': False,
             'no_warnings': False,
@@ -47,15 +48,25 @@ def get_youtube_transcript_with_ytdlp(url):
             'subtitle_format': 'vtt',
             'skip_download': True,
         }
-        
+
         transcript_text = ""
         metadata = {}
-        
+
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                # Extract info
+
+                # Extract info FIRST
                 info = ydl.extract_info(url, download=False)
-                
+
+                # Extract description & hashtags AFTER info exists
+                description = info.get('description', '')
+
+                hashtags = [
+                    word
+                    for word in description.split()
+                    if word.startswith('#')
+                ]
+
                 metadata = {
                     "title": info.get('title', 'N/A'),
                     "channel": info.get('channel', 'N/A'),
@@ -63,79 +74,89 @@ def get_youtube_transcript_with_ytdlp(url):
                     "likes": info.get('like_count', 0) or 0,
                     "duration": info.get('duration', 0) or 0,
                     "upload_date": info.get('upload_date', 'N/A'),
-                    "description": info.get('description', '')[:500],
+                    "description": description[:500],
+                    "hashtags": hashtags[:10],
                     "url": url,
                     "video_id": video_id,
                 }
-                
+
                 print(f"✅ Got metadata: {metadata['title']}")
-                
-                # Try to extract captions
-                transcript_text = ""
-                
-                # Try automatic subtitles first (more likely to exist)
+
+                # Try automatic captions first
                 if info.get('automatic_captions'):
                     print("⏳ Extracting automatic captions...")
+
                     for lang, captions in info.get('automatic_captions', {}).items():
                         for caption in captions:
                             try:
                                 if caption.get('data'):
-                                    # Parse VTT format
                                     lines = caption['data'].split('\n')
+
                                     for line in lines:
-                                        if line.strip() and not '-->' in line and not line.startswith('WEBVTT'):
+                                        if (
+                                            line.strip()
+                                            and '-->' not in line
+                                            and not line.startswith('WEBVTT')
+                                        ):
                                             transcript_text += line.strip() + " "
+
                                     if transcript_text:
                                         print(f"✅ Got automatic captions in {lang}")
                                         break
                             except:
                                 pass
+
                         if transcript_text:
                             break
-                
+
                 # Fallback to manual subtitles
                 if not transcript_text and info.get('subtitles'):
                     print("⏳ Extracting manual captions...")
+
                     for lang, captions in info.get('subtitles', {}).items():
                         for caption in captions:
                             try:
                                 if caption.get('data'):
                                     lines = caption['data'].split('\n')
+
                                     for line in lines:
-                                        if line.strip() and not '-->' in line and not line.startswith('WEBVTT'):
+                                        if (
+                                            line.strip()
+                                            and '-->' not in line
+                                            and not line.startswith('WEBVTT')
+                                        ):
                                             transcript_text += line.strip() + " "
+
                                     if transcript_text:
                                         print(f"✅ Got manual captions in {lang}")
                                         break
                             except:
                                 pass
+
                         if transcript_text:
                             break
-                
-                # Final fallback to description
+
+                # Final fallback
                 if not transcript_text:
-                    print("⚠️  No captions found, using description instead")
-                    transcript_text = info.get('description', 'No transcript available')
-                
+                    print("⚠️ No captions found, using description instead")
+                    transcript_text = description or "No transcript available"
+
                 print(f"✅ Got transcript ({len(transcript_text)} chars)")
-        
+
         except Exception as e:
             print(f"❌ yt-dlp error: {str(e)}")
-            # Fallback: at least return metadata with minimal transcript
             transcript_text = "No transcript available"
-            print(f"⚠️  Returning with description fallback")
-        
+
         return {
             "transcript": transcript_text if transcript_text else "No transcript available",
             "metadata": metadata,
             "status": "success"
         }
-    
+
     except Exception as e:
         print(f"❌ Unexpected error: {str(e)}")
         traceback.print_exc()
         return {"error": f"Error: {str(e)}"}
-
 def get_instagram_metadata(url, comments_estimate=100, likes_estimate=5000):
     """Get Instagram Reel info via yt-dlp"""
     try:
@@ -150,10 +171,12 @@ def get_instagram_metadata(url, comments_estimate=100, likes_estimate=5000):
         print("⏳ Extracting Instagram info...")
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-            
+            description = info.get('description', '')
+            hashtags = [word for word in description.split() if word.startswith('#')]
             metadata = {
                 "title": info.get('title', 'N/A'),
                 "channel": info.get('uploader', 'N/A'),
+                "hashtags": hashtags[:10], 
                 "views": info.get('view_count', 0) or 0,
                 "likes": info.get('like_count', 0) or likes_estimate,
                 "comments": info.get('comment_count', 0) or comments_estimate,

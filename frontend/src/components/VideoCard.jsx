@@ -36,6 +36,12 @@ export default function VideoCard({ video, label }) {
           <p><strong>Duration:</strong> {Math.floor(metadata.duration / 60)}:{(metadata.duration % 60).toString().padStart(2, '0')}</p>
           <p><strong>Uploaded:</strong> {metadata.upload_date}</p>
           {metadata.followers && <p><strong>Creator Followers:</strong> {(metadata.followers / 1000).toFixed(1)}K</p>}
+          {metadata.hashtags && metadata.hashtags.length > 0 && (
+            <p>
+              <strong>Hashtags:</strong>{' '}
+              {metadata.hashtags.join(' ')}
+            </p>
+          )}
         </div>
 
         <a href={metadata.url} target="_blank" rel="noopener noreferrer" className="video-link">
